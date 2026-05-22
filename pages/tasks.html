@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MyWeb – Tasks</title>
+  <link rel="stylesheet" href="../css/style.css">
+</head>
+<body>
+<div class="app">
+
+  <div class="sidebar" id="sidebar">
+    <div class="sidebar-logo">
+      <div class="logo-icon">⚡</div>
+      <div><div class="logo-text">MyWeb</div><div class="logo-sub">Personal OS</div></div>
+    </div>
+    <nav class="nav">
+      <a href="../index.html"    class="nav-link"><span class="nav-icon">🏠</span><span class="nav-label">Dashboard</span></a>
+      <a href="tasks.html"      class="nav-link active"><span class="nav-icon">✅</span><span class="nav-label">Tasks</span></a>
+      <a href="finance.html"    class="nav-link"><span class="nav-icon">💰</span><span class="nav-label">Finance</span></a>
+      <a href="calendar.html"   class="nav-link"><span class="nav-icon">📅</span><span class="nav-label">Calendar</span></a>
+      <a href="goals.html"      class="nav-link"><span class="nav-icon">🎯</span><span class="nav-label">Goals</span></a>
+    </nav>
+    <div class="sidebar-footer"><div class="status-pill"><div class="pulse-dot"></div> All systems go</div></div>
+  </div>
+  <div class="sidebar-overlay" id="sidebar-overlay"></div>
+
+  <div class="main">
+    <div class="topbar">
+      <button class="hamburger" id="hamburger">☰</button>
+      <div class="topbar-title">Tasks</div>
+      <div class="topbar-clock" id="clock"></div>
+    </div>
+
+    <div class="page-content">
+      <div class="section-head">
+        <div>
+          <h1>Tasks</h1>
+          <p id="task-summary">Loading…</p>
+        </div>
+        <button class="btn btn-primary" onclick="openModal('task-modal')">+ Add Task</button>
+      </div>
+
+      <!-- Stats row -->
+      <div class="grid-4" style="margin-bottom:22px" id="task-stats"></div>
+
+      <!-- Filter tabs -->
+      <div class="filter-tabs" id="filter-tabs"></div>
+
+      <!-- Task list -->
+      <div class="card">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;flex-wrap:wrap;gap:10px">
+          <div style="display:flex;gap:8px;flex-wrap:wrap">
+            <select id="sort-select" onchange="renderTasks()" style="width:auto;min-width:150px">
+              <option value="priority">Sort by priority</option>
+              <option value="deadline">Sort by deadline</option>
+              <option value="status">Sort by status</option>
+            </select>
+          </div>
+        </div>
+        <div id="task-list"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL -->
+<div class="modal-overlay" id="task-modal">
+  <div class="modal-box">
+    <div class="modal-header">
+      <h2 id="modal-title">Add Task</h2>
+      <button class="modal-close" onclick="closeModal('task-modal')">×</button>
+    </div>
+    <div class="form-group"><label>Title *</label><input id="t-title" placeholder="What needs to be done?"></div>
+    <div class="form-group"><label>Description</label><textarea id="t-notes" rows="2" placeholder="Optional details"></textarea></div>
+    <div class="form-row">
+      <div class="form-group">
+        <label>Category</label>
+        <select id="t-cat">
+          <option value="university">🎓 University</option>
+          <option value="work">💼 Work</option>
+          <option value="personal" selected>✨ Personal</option>
+          <option value="fitness">💪 Fitness</option>
+          <option value="other">📌 Other</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Priority</label>
+        <select id="t-priority">
+          <option value="high">🔴 High</option>
+          <option value="medium" selected>🟡 Medium</option>
+          <option value="low">🟢 Low</option>
+        </select>
+      </div>
+    </div>
+    <div class="form-group"><label>Deadline</label><input type="date" id="t-deadline"></div>
+    <input type="hidden" id="t-edit-id" value="">
+    <div style="display:flex;gap:10px;margin-top:6px">
+      <button class="btn btn-primary" style="flex:1" onclick="saveTask()">Save Task</button>
+      <button class="btn btn-ghost" onclick="closeModal('task-modal')">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<script src="../js/app.js"></script>
+<script>
+let activeFilter = 'all';
+
+document.addEventListener('DOMContentLoaded', () => {
+  renderTaskStats();
+  renderFilters();
+  renderTasks();
+});
+
+function renderTaskStats() {
+  const cats = ['university','work','personal','fitness','other'];
+  const done = APP.tasks.filter(t=>t.done).length;
+  const pct  = APP.tasks.length ? Math.round(done/APP.tasks.length*100) : 0;
+  const high = APP.tasks.filter(t=>t.priority==='high'&&!t.done).length;
+  const overdue = APP.tasks.filter(t=>t.deadline&&!t.done&&new Date(t.deadline)<new Date()).length;
+
+  el('task-summary').textContent = `${done} of ${APP.tasks.length} complete · ${pct}%`;
+  el('task-stats').innerHTML = `
+    <div class="stat-card green">
+      <div class="stat-emoji">✅</div>
+      <div class="stat-value" style="color:var(--green)">${done}/${APP.tasks.length}</div>
+      <div class="stat-label">Completed</div>
+    </div>
+    <div class="stat-card red">
+      <div class="stat-emoji">🔴</div>
+      <div class="stat-value" style="color:var(--red)">${high}</div>
+      <div class="stat-label">High priority</div>
+    </div>
+    <div class="stat-card orange">
+      <div class="stat-emoji">⚠️</div>
+      <div class="stat-value" style="color:var(--orange)">${overdue}</div>
+      <div class="stat-label">Overdue</div>
+    </div>
+    <div class="stat-card cyan">
+      <div class="stat-emoji">📋</div>
+      <div class="stat-value" style="color:var(--cyan)">${APP.tasks.filter(t=>!t.done).length}</div>
+      <div class="stat-label">Remaining</div>
+    </div>
+  `;
+}
+
+function renderFilters() {
+  const cats = ['all','university','work','personal','fitness','other'];
+  el('filter-tabs').innerHTML = cats.map(c => `
+    <button class="filter-tab ${activeFilter===c?'active':''}" onclick="setFilter('${c}')">${c}</button>
+  `).join('');
+}
+
+function setFilter(f) {
+  activeFilter = f;
+  renderFilters();
+  renderTasks();
+}
+
+function renderTasks() {
+  const sortBy = el('sort-select').value;
+  let tasks = activeFilter === 'all' ? [...APP.tasks] : APP.tasks.filter(t=>t.cat===activeFilter);
+
+  if (sortBy === 'priority') {
+    const order = {high:0,medium:1,low:2};
+    tasks.sort((a,b) => (a.done - b.done) || (order[a.priority]-order[b.priority]));
+  } else if (sortBy === 'deadline') {
+    tasks.sort((a,b) => {
+      if (a.done !== b.done) return a.done ? 1 : -1;
+      if (!a.deadline) return 1;
+      if (!b.deadline) return -1;
+      return a.deadline.localeCompare(b.deadline);
+    });
+  } else {
+    tasks.sort((a,b) => a.done - b.done);
+  }
+
+  if (!tasks.length) {
+    el('task-list').innerHTML = '<div class="empty"><div class="empty-icon">✅</div><p>No tasks in this category</p></div>';
+    return;
+  }
+
+  el('task-list').innerHTML = tasks.map(t => {
+    const overdue = t.deadline && !t.done && new Date(t.deadline) < new Date();
+    return `
+    <div class="list-item ${t.done?'done':''}">
+      <div class="cb ${t.done?'checked':''}" onclick="toggleTask(${t.id})" style="cursor:pointer">${t.done?'✓':''}</div>
+      <div class="item-flex">
+        <div class="item-main">${t.title}</div>
+        <div class="item-sub">
+          <span style="color:${EVT_COLORS[t.cat]||'var(--muted)'};text-transform:capitalize">${t.cat}</span>
+          ${t.deadline ? ` · <span style="color:${overdue?'var(--red)':'var(--muted)'}">${t.deadline}${overdue?' ⚠ overdue':''}</span>` : ''}
+          ${t.notes ? ` · ${t.notes}` : ''}
+        </div>
+      </div>
+      <div class="prio ${t.priority}" title="${t.priority} priority"></div>
+      <button class="btn-icon" onclick="editTask(${t.id})" title="Edit">✏️</button>
+      <button class="btn-icon" onclick="deleteTask(${t.id})" title="Delete">🗑️</button>
+    </div>`;
+  }).join('');
+}
+
+function toggleTask(id) {
+  const t = APP.tasks.find(x=>x.id===id);
+  if (t) { t.done = !t.done; saveState(); renderTasks(); renderTaskStats(); }
+}
+
+function editTask(id) {
+  const t = APP.tasks.find(x=>x.id===id);
+  if (!t) return;
+  el('modal-title').textContent = 'Edit Task';
+  el('t-title').value    = t.title;
+  el('t-notes').value    = t.notes;
+  el('t-cat').value      = t.cat;
+  el('t-priority').value = t.priority;
+  el('t-deadline').value = t.deadline;
+  el('t-edit-id').value  = t.id;
+  openModal('task-modal');
+}
+
+function deleteTask(id) {
+  if (!confirm('Delete this task?')) return;
+  APP.tasks = APP.tasks.filter(x=>x.id!==id);
+  saveState(); renderTasks(); renderTaskStats();
+}
+
+function saveTask() {
+  const title = el('t-title').value.trim();
+  if (!title) { alert('Please enter a title'); return; }
+  const editId = el('t-edit-id').value;
+  if (editId) {
+    const t = APP.tasks.find(x=>x.id===parseInt(editId));
+    if (t) {
+      t.title    = title;
+      t.notes    = el('t-notes').value;
+      t.cat      = el('t-cat').value;
+      t.priority = el('t-priority').value;
+      t.deadline = el('t-deadline').value;
+    }
+  } else {
+    APP.tasks.push({
+      id: uid(), title,
+      notes:    el('t-notes').value,
+      cat:      el('t-cat').value,
+      priority: el('t-priority').value,
+      deadline: el('t-deadline').value,
+      done: false
+    });
+  }
+  saveState();
+  closeModal('task-modal');
+  el('t-title').value=''; el('t-notes').value=''; el('t-deadline').value=''; el('t-edit-id').value='';
+  el('modal-title').textContent = 'Add Task';
+  renderTasks(); renderTaskStats();
+}
+</script>
+</body>
+</html>

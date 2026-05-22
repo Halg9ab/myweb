@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MyWeb – Dashboard</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<div class="app">
+
+  <!-- SIDEBAR -->
+  <div class="sidebar" id="sidebar">
+    <div class="sidebar-logo">
+      <div class="logo-icon">⚡</div>
+      <div>
+        <div class="logo-text">MyWeb</div>
+        <div class="logo-sub">Personal OS</div>
+      </div>
+    </div>
+    <nav class="nav">
+      <a href="index.html"          class="nav-link active"><span class="nav-icon">🏠</span><span class="nav-label">Dashboard</span></a>
+      <a href="pages/tasks.html"    class="nav-link"><span class="nav-icon">✅</span><span class="nav-label">Tasks</span></a>
+      <a href="pages/finance.html"  class="nav-link"><span class="nav-icon">💰</span><span class="nav-label">Finance</span></a>
+      <a href="pages/calendar.html" class="nav-link"><span class="nav-icon">📅</span><span class="nav-label">Calendar</span></a>
+      <a href="pages/goals.html"    class="nav-link"><span class="nav-icon">🎯</span><span class="nav-label">Goals</span></a>
+    </nav>
+    <div class="sidebar-footer">
+      <div class="status-pill"><div class="pulse-dot"></div> All systems go</div>
+    </div>
+  </div>
+  <div class="sidebar-overlay" id="sidebar-overlay"></div>
+
+  <!-- MAIN -->
+  <div class="main">
+    <div class="topbar">
+      <button class="hamburger" id="hamburger">☰</button>
+      <div class="topbar-title">Dashboard</div>
+      <div class="topbar-date" id="topbar-date"></div>
+      <div class="topbar-clock" id="clock"></div>
+    </div>
+
+    <div class="page-content">
+
+      <!-- QUOTE BANNER -->
+      <div style="background:rgba(0,212,255,0.06);border:1px solid rgba(0,212,255,0.12);border-radius:12px;padding:13px 18px;margin-bottom:22px;display:flex;align-items:center;gap:10px;">
+        <span style="font-size:16px">💡</span>
+        <span style="font-size:13px;color:var(--muted);font-style:italic" id="quote-text"></span>
+        <span style="margin-left:auto;font-size:10px;color:var(--dim);font-family:monospace;letter-spacing:.5px">DAILY INSIGHT</span>
+      </div>
+
+      <!-- STAT CARDS -->
+      <div class="grid-4" style="margin-bottom:22px" id="stats-row"></div>
+
+      <!-- ROW 2 -->
+      <div class="grid-2" style="margin-bottom:22px">
+        <!-- Spending chart -->
+        <div class="card">
+          <div class="card-title">📊 Spending by category</div>
+          <div class="bar-chart" id="dash-bars">
+            <div class="empty" style="padding:20px"><p>No expenses yet</p></div>
+          </div>
+        </div>
+        <!-- Task progress -->
+        <div class="card">
+          <div class="card-title">✅ Task completion</div>
+          <div id="task-ring" style="display:flex;align-items:center;gap:20px">
+            <svg viewBox="0 0 90 90" width="90" height="90" style="flex-shrink:0">
+              <circle cx="45" cy="45" r="36" fill="none" stroke="rgba(255,255,255,0.06)" stroke-width="8"/>
+              <circle id="ring-circle" cx="45" cy="45" r="36" fill="none"
+                stroke="#10b981" stroke-width="8" stroke-linecap="round"
+                stroke-dasharray="226" stroke-dashoffset="226"
+                transform="rotate(-90 45 45)" style="transition:stroke-dashoffset .7s ease"/>
+              <text x="45" y="49" fill="#10b981" font-size="13" font-weight="700"
+                text-anchor="middle" font-family="monospace" id="ring-label">0%</text>
+            </svg>
+            <div style="flex:1" id="task-cat-bars"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ROW 3 -->
+      <div class="grid-3">
+        <!-- Pending tasks -->
+        <div class="card">
+          <div class="card-title" style="justify-content:space-between">
+            <span>⏳ Pending tasks</span>
+            <a href="pages/tasks.html" style="font-size:11px;color:var(--cyan);text-decoration:none;font-weight:400">View all →</a>
+          </div>
+          <div id="dash-tasks"></div>
+        </div>
+        <!-- Upcoming events -->
+        <div class="card">
+          <div class="card-title" style="justify-content:space-between">
+            <span>📅 Upcoming events</span>
+            <a href="pages/calendar.html" style="font-size:11px;color:var(--cyan);text-decoration:none;font-weight:400">View all →</a>
+          </div>
+          <div id="dash-events"></div>
+        </div>
+        <!-- Goals overview -->
+        <div class="card">
+          <div class="card-title" style="justify-content:space-between">
+            <span>🎯 Goals overview</span>
+            <a href="pages/goals.html" style="font-size:11px;color:var(--cyan);text-decoration:none;font-weight:400">View all →</a>
+          </div>
+          <div id="dash-goals"></div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<script src="js/app.js"></script>
+<script>
+const QUOTES = [
+  "Discipline is choosing what you want most over what you want now.",
+  "Track it, improve it, own it.",
+  "Small consistent steps compound into massive results.",
+  "You don't need more time — you need more focus.",
+  "Every dollar you track is a dollar you control.",
+];
+
+document.addEventListener('DOMContentLoaded', () => {
+  // date
+  const d = new Date();
+  el('topbar-date').textContent = d.toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'});
+  // quote
+  el('quote-text').textContent = QUOTES[d.getDay() % QUOTES.length];
+
+  renderStats();
+  renderBars();
+  renderRing();
+  renderDashTasks();
+  renderDashEvents();
+  renderDashGoals();
+});
+
+function renderStats() {
+  const total = APP.expenses.reduce((s,e)=>s+e.amount,0);
+  const done  = APP.tasks.filter(t=>t.done).length;
+  const pct   = APP.tasks.length ? Math.round(done/APP.tasks.length*100) : 0;
+  const saved = APP.goals.reduce((s,g)=>s+g.saved,0);
+  const evts  = APP.events.filter(e=>!e.done).length;
+
+  el('stats-row').innerHTML = `
+    <div class="stat-card cyan">
+      <div class="stat-emoji">💰</div>
+      <div class="stat-value" style="color:var(--cyan)">$${total.toFixed(0)}</div>
+      <div class="stat-label">Total spent</div>
+    </div>
+    <div class="stat-card green">
+      <div class="stat-emoji">✅</div>
+      <div class="stat-value" style="color:var(--green)">${done}/${APP.tasks.length}</div>
+      <div class="stat-label">Tasks complete · ${pct}%</div>
+    </div>
+    <div class="stat-card purple">
+      <div class="stat-emoji">🎯</div>
+      <div class="stat-value" style="color:var(--purple)">$${saved.toLocaleString()}</div>
+      <div class="stat-label">Total saved</div>
+    </div>
+    <div class="stat-card orange">
+      <div class="stat-emoji">📅</div>
+      <div class="stat-value" style="color:var(--orange)">${evts}</div>
+      <div class="stat-label">Upcoming events</div>
+    </div>
+  `;
+}
+
+function renderBars() {
+  const totals = {};
+  APP.expenses.forEach(e => totals[e.cat] = (totals[e.cat]||0) + e.amount);
+  const entries = Object.entries(totals).filter(([,v])=>v>0).sort((a,b)=>b[1]-a[1]).slice(0,7);
+  if (!entries.length) return;
+  const max = Math.max(...entries.map(([,v])=>v), 1);
+  el('dash-bars').innerHTML = entries.map(([cat, amt]) => `
+    <div class="bar-col">
+      <div class="bar-value">$${amt.toFixed(0)}</div>
+      <div class="bar-rect" style="height:${Math.max(4,(amt/max*100)).toFixed(0)}px;background:${CAT_COLORS[cat]||'#888'}"></div>
+      <div class="bar-label">${CAT_EMOJI[cat]||'📦'}</div>
+    </div>
+  `).join('');
+}
+
+function renderRing() {
+  const total = APP.tasks.length;
+  const done  = APP.tasks.filter(t=>t.done).length;
+  const pct   = total ? Math.round(done/total*100) : 0;
+  const circumference = 226;
+  el('ring-circle').setAttribute('stroke-dashoffset', circumference - (circumference * pct / 100));
+  el('ring-label').textContent = pct + '%';
+
+  const cats = ['university','work','personal','fitness','other'];
+  el('task-cat-bars').innerHTML = cats.map(c => {
+    const ct = APP.tasks.filter(t=>t.cat===c);
+    const dp = ct.filter(t=>t.done).length;
+    const p  = ct.length ? Math.round(dp/ct.length*100) : 0;
+    return `<div style="margin-bottom:9px">
+      <div style="display:flex;justify-content:space-between;font-size:11px;margin-bottom:4px">
+        <span style="color:var(--muted);text-transform:capitalize">${c}</span>
+        <span style="color:var(--dim);font-family:monospace">${dp}/${ct.length}</span>
+      </div>
+      <div class="progress-wrap"><div class="progress-fill" style="width:${p}%;background:${EVT_COLORS[c]||'var(--cyan)'}"></div></div>
+    </div>`;
+  }).join('');
+}
+
+function renderDashTasks() {
+  const pending = APP.tasks.filter(t=>!t.done).slice(0,5);
+  el('dash-tasks').innerHTML = pending.length ? pending.map(t => `
+    <div class="list-item" style="cursor:pointer" onclick="toggleTask(${t.id})">
+      <div class="cb ${t.done?'checked':''}">✓</div>
+      <div class="item-flex">
+        <div class="item-main">${t.title}</div>
+        <div class="item-sub" style="text-transform:capitalize">${t.cat}${t.deadline?' · '+t.deadline:''}</div>
+      </div>
+      <div class="prio ${t.priority}"></div>
+    </div>
+  `).join('') : '<div class="empty"><div class="empty-icon">🎉</div><p>All caught up!</p></div>';
+}
+
+function renderDashEvents() {
+  const upcoming = APP.events.filter(e=>!e.done).sort((a,b)=>a.date.localeCompare(b.date)).slice(0,4);
+  el('dash-events').innerHTML = upcoming.length ? upcoming.map(e => `
+    <div class="list-item" style="border-left:3px solid ${EVT_COLORS[e.cat]||'var(--blue)'}">
+      <div class="item-flex">
+        <div class="item-main">${e.title}</div>
+        <div class="item-sub">${e.date} · ${e.time}</div>
+      </div>
+    </div>
+  `).join('') : '<div class="empty"><div class="empty-icon">📅</div><p>No upcoming events</p></div>';
+}
+
+function renderDashGoals() {
+  el('dash-goals').innerHTML = APP.goals.map(g => {
+    const pct = Math.min(100, Math.round(g.saved/g.target*100));
+    return `<div style="margin-bottom:14px">
+      <div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:5px">
+        <span>${g.emoji} ${g.title}</span>
+        <span style="color:${g.color};font-family:monospace;font-weight:700">${pct}%</span>
+      </div>
+      <div class="progress-wrap"><div class="progress-fill" style="width:${pct}%;background:${g.color}"></div></div>
+      <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--muted);margin-top:3px">
+        <span>$${g.saved.toLocaleString()}</span><span>$${g.target.toLocaleString()}</span>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function toggleTask(id) {
+  const t = APP.tasks.find(x=>x.id===id);
+  if (t) { t.done = !t.done; saveState(); renderDashTasks(); renderRing(); renderStats(); }
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MyWeb – Calendar</title>
+  <link rel="stylesheet" href="../css/style.css">
+</head>
+<body>
+<div class="app">
+
+  <div class="sidebar" id="sidebar">
+    <div class="sidebar-logo">
+      <div class="logo-icon">⚡</div>
+      <div><div class="logo-text">MyWeb</div><div class="logo-sub">Personal OS</div></div>
+    </div>
+    <nav class="nav">
+      <a href="../index.html"    class="nav-link"><span class="nav-icon">🏠</span><span class="nav-label">Dashboard</span></a>
+      <a href="tasks.html"      class="nav-link"><span class="nav-icon">✅</span><span class="nav-label">Tasks</span></a>
+      <a href="finance.html"    class="nav-link"><span class="nav-icon">💰</span><span class="nav-label">Finance</span></a>
+      <a href="calendar.html"   class="nav-link active"><span class="nav-icon">📅</span><span class="nav-label">Calendar</span></a>
+      <a href="goals.html"      class="nav-link"><span class="nav-icon">🎯</span><span class="nav-label">Goals</span></a>
+    </nav>
+    <div class="sidebar-footer"><div class="status-pill"><div class="pulse-dot"></div> All systems go</div></div>
+  </div>
+  <div class="sidebar-overlay" id="sidebar-overlay"></div>
+
+  <div class="main">
+    <div class="topbar">
+      <button class="hamburger" id="hamburger">☰</button>
+      <div class="topbar-title">Calendar</div>
+      <div class="topbar-clock" id="clock"></div>
+    </div>
+
+    <div class="page-content">
+      <div class="section-head">
+        <div style="display:flex;align-items:center;gap:14px">
+          <button class="btn btn-ghost btn-sm" onclick="changeMonth(-1)">‹ Prev</button>
+          <h1 id="cal-title" style="font-size:20px;min-width:160px;text-align:center"></h1>
+          <button class="btn btn-ghost btn-sm" onclick="changeMonth(1)">Next ›</button>
+        </div>
+        <button class="btn btn-primary" onclick="openModal('event-modal')">+ Add Event</button>
+      </div>
+
+      <!-- Category legend -->
+      <div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:18px" id="cat-legend"></div>
+
+      <!-- Calendar grid -->
+      <div class="card" style="margin-bottom:20px">
+        <div class="cal-header" id="cal-header"></div>
+        <div class="cal-grid" id="cal-grid"></div>
+      </div>
+
+      <!-- Upcoming events -->
+      <div class="card">
+        <div class="card-title" style="justify-content:space-between">
+          <span>📋 All upcoming events</span>
+          <span id="events-count" style="font-size:11px;color:var(--muted);font-weight:400"></span>
+        </div>
+        <div id="events-list"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL -->
+<div class="modal-overlay" id="event-modal">
+  <div class="modal-box">
+    <div class="modal-header">
+      <h2 id="event-modal-title">Add Event</h2>
+      <button class="modal-close" onclick="closeModal('event-modal')">×</button>
+    </div>
+    <div class="form-group"><label>Title *</label><input id="ev-title" placeholder="Event name"></div>
+    <div class="form-row">
+      <div class="form-group"><label>Date *</label><input type="date" id="ev-date"></div>
+      <div class="form-group"><label>Time</label><input type="time" id="ev-time" value="09:00"></div>
+    </div>
+    <div class="form-group">
+      <label>Category</label>
+      <select id="ev-cat">
+        <option value="university">🎓 University</option>
+        <option value="work">💼 Work</option>
+        <option value="personal">✨ Personal</option>
+        <option value="fitness">💪 Fitness</option>
+        <option value="social">🤝 Social</option>
+        <option value="other">📌 Other</option>
+      </select>
+    </div>
+    <div class="form-group"><label>Notes</label><input id="ev-notes" placeholder="Optional notes"></div>
+    <input type="hidden" id="ev-edit-id" value="">
+    <div style="display:flex;gap:10px;margin-top:6px">
+      <button class="btn btn-primary" style="flex:1" onclick="saveEvent()">Save Event</button>
+      <button class="btn btn-ghost" onclick="closeModal('event-modal')">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<script src="../js/app.js"></script>
+<script>
+const MONTH_NAMES = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+const DAY_NAMES   = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+
+let calYear  = new Date().getFullYear();
+let calMonth = new Date().getMonth();
+
+document.addEventListener('DOMContentLoaded', () => {
+  el('ev-date').value = today();
+  renderLegend();
+  renderCalendar();
+  renderEventsList();
+});
+
+function renderLegend() {
+  el('cat-legend').innerHTML = Object.entries(EVT_COLORS).map(([cat,color]) => `
+    <div style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--muted)">
+      <div style="width:10px;height:10px;border-radius:3px;background:${color}"></div>
+      <span style="text-transform:capitalize">${cat}</span>
+    </div>
+  `).join('');
+}
+
+function renderCalendar() {
+  el('cal-title').textContent = MONTH_NAMES[calMonth] + ' ' + calYear;
+
+  // day headers
+  el('cal-header').innerHTML = DAY_NAMES.map(d =>
+    `<div class="cal-dayname">${d}</div>`
+  ).join('');
+
+  const firstDay    = new Date(calYear, calMonth, 1).getDay();
+  const daysInMonth = new Date(calYear, calMonth+1, 0).getDate();
+  const prevDays    = new Date(calYear, calMonth, 0).getDate();
+  const todayDate   = new Date();
+  let html = '';
+
+  // prev month padding
+  for (let i = firstDay - 1; i >= 0; i--) {
+    html += `<div class="cal-cell faded"><div class="cal-num">${prevDays - i}</div></div>`;
+  }
+
+  // current month days
+  for (let d = 1; d <= daysInMonth; d++) {
+    const dateStr = `${calYear}-${String(calMonth+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+    const isToday = todayDate.getDate()===d && todayDate.getMonth()===calMonth && todayDate.getFullYear()===calYear;
+    const dayEvts = APP.events.filter(e => e.date === dateStr);
+    html += `<div class="cal-cell ${isToday?'today':''}" onclick="dayClick('${dateStr}')">
+      <div class="cal-num">${d}</div>
+      ${dayEvts.slice(0,2).map(e => `
+        <div class="cal-event-pill" style="background:${EVT_COLORS[e.cat]||'#555'}22;color:${EVT_COLORS[e.cat]||'#aaa'}">${e.title}</div>
+      `).join('')}
+      ${dayEvts.length > 2 ? `<div style="font-size:10px;color:var(--muted)">+${dayEvts.length-2} more</div>` : ''}
+    </div>`;
+  }
+
+  // next month padding
+  const totalCells = firstDay + daysInMonth;
+  const remainder  = (7 - totalCells % 7) % 7;
+  for (let d = 1; d <= remainder; d++) {
+    html += `<div class="cal-cell faded"><div class="cal-num">${d}</div></div>`;
+  }
+
+  el('cal-grid').innerHTML = html;
+}
+
+function renderEventsList() {
+  const upcoming = APP.events
+    .filter(e => !e.done)
+    .sort((a,b) => a.date.localeCompare(b.date));
+
+  el('events-count').textContent = `${upcoming.length} upcoming`;
+  el('events-list').innerHTML = upcoming.length ? upcoming.map(e => `
+    <div class="list-item" style="border-left:3px solid ${EVT_COLORS[e.cat]||'var(--blue)'}">
+      <div class="item-flex">
+        <div class="item-main">${e.title}</div>
+        <div class="item-sub">
+          <span style="color:${EVT_COLORS[e.cat]};text-transform:capitalize">${e.cat}</span>
+          · ${e.date} · ${e.time}${e.notes?' · '+e.notes:''}
+        </div>
+      </div>
+      <button class="btn btn-ghost btn-sm" onclick="markDone(${e.id})">✓ Done</button>
+      <button class="btn-icon" onclick="editEvent(${e.id})">✏️</button>
+      <button class="btn-icon" onclick="deleteEvent(${e.id})">🗑️</button>
+    </div>
+  `).join('') : '<div class="empty"><div class="empty-icon">📅</div><p>No upcoming events — add one!</p></div>';
+}
+
+function changeMonth(dir) {
+  calMonth += dir;
+  if (calMonth > 11) { calMonth = 0; calYear++; }
+  if (calMonth < 0)  { calMonth = 11; calYear--; }
+  renderCalendar();
+}
+
+function dayClick(date) {
+  el('ev-date').value = date;
+  el('ev-edit-id').value = '';
+  el('event-modal-title').textContent = 'Add Event';
+  openModal('event-modal');
+}
+
+function editEvent(id) {
+  const e = APP.events.find(x=>x.id===id);
+  if (!e) return;
+  el('event-modal-title').textContent = 'Edit Event';
+  el('ev-title').value = e.title;
+  el('ev-date').value  = e.date;
+  el('ev-time').value  = e.time;
+  el('ev-cat').value   = e.cat;
+  el('ev-notes').value = e.notes;
+  el('ev-edit-id').value = e.id;
+  openModal('event-modal');
+}
+
+function saveEvent() {
+  const title = el('ev-title').value.trim();
+  const date  = el('ev-date').value;
+  if (!title) { alert('Please enter a title'); return; }
+  if (!date)  { alert('Please select a date'); return; }
+  const editId = el('ev-edit-id').value;
+  if (editId) {
+    const e = APP.events.find(x=>x.id===parseInt(editId));
+    if (e) {
+      e.title = title; e.date = date;
+      e.time  = el('ev-time').value;
+      e.cat   = el('ev-cat').value;
+      e.notes = el('ev-notes').value;
+    }
+  } else {
+    APP.events.push({
+      id: uid(), title, date,
+      time:  el('ev-time').value || '09:00',
+      cat:   el('ev-cat').value,
+      done:  false,
+      notes: el('ev-notes').value
+    });
+  }
+  saveState();
+  closeModal('event-modal');
+  el('ev-title').value=''; el('ev-notes').value=''; el('ev-edit-id').value='';
+  el('event-modal-title').textContent = 'Add Event';
+  renderCalendar(); renderEventsList();
+}
+
+function markDone(id) {
+  const e = APP.events.find(x=>x.id===id);
+  if (e) { e.done = true; saveState(); renderCalendar(); renderEventsList(); }
+}
+
+function deleteEvent(id) {
+  if (!confirm('Delete this event?')) return;
+  APP.events = APP.events.filter(x=>x.id!==id);
+  saveState(); renderCalendar(); renderEventsList();
+}
+</script>
+</body>
+</html>

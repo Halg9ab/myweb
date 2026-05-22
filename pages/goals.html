@@ -1,0 +1,322 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MyWeb – Goals</title>
+  <link rel="stylesheet" href="../css/style.css">
+</head>
+<body>
+<div class="app">
+
+  <div class="sidebar" id="sidebar">
+    <div class="sidebar-logo">
+      <div class="logo-icon">⚡</div>
+      <div><div class="logo-text">MyWeb</div><div class="logo-sub">Personal OS</div></div>
+    </div>
+    <nav class="nav">
+      <a href="../index.html"    class="nav-link"><span class="nav-icon">🏠</span><span class="nav-label">Dashboard</span></a>
+      <a href="tasks.html"      class="nav-link"><span class="nav-icon">✅</span><span class="nav-label">Tasks</span></a>
+      <a href="finance.html"    class="nav-link"><span class="nav-icon">💰</span><span class="nav-label">Finance</span></a>
+      <a href="calendar.html"   class="nav-link"><span class="nav-icon">📅</span><span class="nav-label">Calendar</span></a>
+      <a href="goals.html"      class="nav-link active"><span class="nav-icon">🎯</span><span class="nav-label">Goals</span></a>
+    </nav>
+    <div class="sidebar-footer"><div class="status-pill"><div class="pulse-dot"></div> All systems go</div></div>
+  </div>
+  <div class="sidebar-overlay" id="sidebar-overlay"></div>
+
+  <div class="main">
+    <div class="topbar">
+      <button class="hamburger" id="hamburger">☰</button>
+      <div class="topbar-title">Goals & Savings</div>
+      <div class="topbar-clock" id="clock"></div>
+    </div>
+
+    <div class="page-content">
+      <div class="section-head">
+        <div><h1>Goals & Savings</h1><p id="goals-summary">Loading…</p></div>
+        <button class="btn btn-primary" onclick="openNewGoal()">+ New Goal</button>
+      </div>
+
+      <!-- Overall stats -->
+      <div class="grid-4" style="margin-bottom:22px" id="goal-stats"></div>
+
+      <!-- Overall progress bar -->
+      <div class="card" style="margin-bottom:22px" id="overall-progress"></div>
+
+      <!-- Goals grid -->
+      <div class="grid-2" id="goals-grid"></div>
+    </div>
+  </div>
+</div>
+
+<!-- New/Edit Goal Modal -->
+<div class="modal-overlay" id="goal-modal">
+  <div class="modal-box">
+    <div class="modal-header">
+      <h2 id="goal-modal-title">New Goal</h2>
+      <button class="modal-close" onclick="closeModal('goal-modal')">×</button>
+    </div>
+    <div style="margin-bottom:16px">
+      <label style="font-size:12px;color:var(--muted);display:block;margin-bottom:8px">Choose an icon</label>
+      <div style="display:flex;flex-wrap:wrap;gap:7px" id="emoji-picker"></div>
+    </div>
+    <div class="form-group"><label>Goal name *</label><input id="g-title" placeholder="e.g. Japan trip, New laptop…"></div>
+    <div class="form-row">
+      <div class="form-group"><label>Target amount *</label><input type="number" id="g-target" placeholder="0" min="1"></div>
+      <div class="form-group"><label>Already saved</label><input type="number" id="g-saved" placeholder="0" min="0"></div>
+    </div>
+    <div class="form-group"><label>Deadline</label><input type="date" id="g-deadline"></div>
+    <input type="hidden" id="g-edit-id" value="">
+    <input type="hidden" id="g-emoji-val" value="🎯">
+    <div style="display:flex;gap:10px;margin-top:6px">
+      <button class="btn btn-primary" style="flex:1" onclick="saveGoal()">Save Goal</button>
+      <button class="btn btn-ghost" onclick="closeModal('goal-modal')">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<!-- Deposit Modal -->
+<div class="modal-overlay" id="deposit-modal">
+  <div class="modal-box" style="max-width:360px">
+    <div class="modal-header">
+      <h2>Add to savings</h2>
+      <button class="modal-close" onclick="closeModal('deposit-modal')">×</button>
+    </div>
+    <p style="font-size:13px;color:var(--muted);margin-bottom:16px" id="deposit-goal-name">Goal</p>
+    <div class="form-group"><label>Amount to add</label><input type="number" id="dep-amount" placeholder="0.00" min="0.01" step="0.01"></div>
+    <div style="display:flex;gap:10px">
+      <button class="btn btn-primary" style="flex:1" onclick="doDeposit()">Confirm Deposit</button>
+      <button class="btn btn-ghost" onclick="closeModal('deposit-modal')">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<script src="../js/app.js"></script>
+<script>
+const EMOJIS = ['🎯','✈️','💻','🛡️','🏠','🎓','🚗','📱','⌚','🎮','🏖️','💰','🌍','🏋️','📸','🎸','🍕','🐶','🌱','💎'];
+let depositGoalId = null;
+
+document.addEventListener('DOMContentLoaded', () => {
+  buildEmojiPicker();
+  renderGoalStats();
+  renderOverallProgress();
+  renderGoals();
+});
+
+function buildEmojiPicker() {
+  el('emoji-picker').innerHTML = EMOJIS.map(e => `
+    <button type="button" onclick="selectEmoji('${e}',this)"
+      style="width:36px;height:36px;border-radius:8px;border:1px solid var(--border);background:rgba(255,255,255,0.03);cursor:pointer;font-size:18px;transition:all .15s"
+      onmouseover="this.style.borderColor='var(--cyan)'" onmouseout="if(!this.classList.contains('selected'))this.style.borderColor='var(--border)'">${e}</button>
+  `).join('');
+}
+
+function selectEmoji(emoji, btn) {
+  document.querySelectorAll('#emoji-picker button').forEach(b => {
+    b.classList.remove('selected');
+    b.style.borderColor = 'var(--border)';
+    b.style.background = 'rgba(255,255,255,0.03)';
+  });
+  btn.classList.add('selected');
+  btn.style.borderColor = 'var(--cyan)';
+  btn.style.background = 'rgba(0,212,255,0.1)';
+  el('g-emoji-val').value = emoji;
+}
+
+function renderGoalStats() {
+  const totalSaved  = APP.goals.reduce((s,g)=>s+g.saved,0);
+  const totalTarget = APP.goals.reduce((s,g)=>s+g.target,0);
+  const achieved    = APP.goals.filter(g=>g.saved>=g.target).length;
+  const remaining   = totalTarget - totalSaved;
+
+  el('goals-summary').textContent = `$${totalSaved.toLocaleString()} saved of $${totalTarget.toLocaleString()} across ${APP.goals.length} goals`;
+  el('goal-stats').innerHTML = `
+    <div class="stat-card cyan">
+      <div class="stat-emoji">💰</div>
+      <div class="stat-value" style="color:var(--cyan)">$${totalSaved.toLocaleString()}</div>
+      <div class="stat-label">Total saved</div>
+    </div>
+    <div class="stat-card purple">
+      <div class="stat-emoji">🎯</div>
+      <div class="stat-value" style="color:var(--purple)">$${totalTarget.toLocaleString()}</div>
+      <div class="stat-label">Total target</div>
+    </div>
+    <div class="stat-card orange">
+      <div class="stat-emoji">⏳</div>
+      <div class="stat-value" style="color:var(--orange)">$${remaining.toLocaleString()}</div>
+      <div class="stat-label">Still needed</div>
+    </div>
+    <div class="stat-card green">
+      <div class="stat-emoji">🏆</div>
+      <div class="stat-value" style="color:var(--green)">${achieved}/${APP.goals.length}</div>
+      <div class="stat-label">Goals achieved</div>
+    </div>
+  `;
+}
+
+function renderOverallProgress() {
+  const totalSaved  = APP.goals.reduce((s,g)=>s+g.saved,0);
+  const totalTarget = APP.goals.reduce((s,g)=>s+g.target,0);
+  const pct = totalTarget ? Math.min(100, Math.round(totalSaved/totalTarget*100)) : 0;
+  el('overall-progress').innerHTML = `
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+      <span style="font-size:14px;font-weight:600">Overall savings progress</span>
+      <span style="font-family:monospace;font-size:18px;font-weight:700;color:var(--cyan)">${pct}%</span>
+    </div>
+    <div class="progress-wrap" style="height:10px">
+      <div class="progress-fill" style="width:${pct}%;background:linear-gradient(90deg,var(--cyan),var(--blue))"></div>
+    </div>
+    <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--muted);margin-top:7px">
+      <span>$${totalSaved.toLocaleString()} saved</span>
+      <span>$${(totalTarget-totalSaved).toLocaleString()} to go</span>
+      <span>$${totalTarget.toLocaleString()} total</span>
+    </div>
+  `;
+}
+
+function renderGoals() {
+  const goalCards = APP.goals.map(g => {
+    const pct     = Math.min(100, Math.round(g.saved/g.target*100));
+    const achieved = g.saved >= g.target;
+    const days    = daysLeft(g.deadline);
+    const daysStr = days === null ? '' : days < 0
+      ? `<span style="color:var(--red)">${Math.abs(days)}d overdue</span>`
+      : days === 0 ? `<span style="color:var(--orange)">Due today</span>`
+      : `<span style="color:${days<30?'var(--orange)':'var(--muted)'}">${days}d left</span>`;
+
+    return `<div class="goal-card">
+      <div class="goal-accent" style="background:${g.color}"></div>
+      <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:16px">
+        <div style="display:flex;align-items:center;gap:12px">
+          <div style="font-size:32px;line-height:1">${g.emoji}</div>
+          <div>
+            <div style="font-size:16px;font-weight:600">${g.title}</div>
+            <div style="font-size:12px;margin-top:2px">${daysStr}</div>
+          </div>
+        </div>
+        <div style="display:flex;gap:5px">
+          <button class="btn-icon" onclick="editGoal(${g.id})" title="Edit">✏️</button>
+          <button class="btn-icon" onclick="deleteGoal(${g.id})" title="Delete">🗑️</button>
+        </div>
+      </div>
+
+      <div style="display:flex;justify-content:space-between;align-items:flex-end;margin-bottom:9px">
+        <div class="goal-amount" style="color:${g.color}">$${g.saved.toLocaleString()}</div>
+        <div style="font-size:13px;color:var(--muted)">of $${g.target.toLocaleString()}</div>
+      </div>
+
+      <div class="progress-wrap" style="height:9px;margin-bottom:8px">
+        <div class="progress-fill" style="width:${pct}%;background:${achieved?'var(--green)':g.color}"></div>
+      </div>
+
+      <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--muted);margin-bottom:14px">
+        <span>${pct}% complete</span>
+        <span>${achieved ? '🎉 Goal reached!' : '$'+(g.target-g.saved).toLocaleString()+' to go'}</span>
+      </div>
+
+      ${!achieved ? `<button class="btn btn-ghost" style="width:100%;justify-content:center" onclick="openDeposit(${g.id})">+ Add to savings</button>` :
+        `<div style="text-align:center;padding:9px;background:rgba(16,185,129,0.1);border:1px solid rgba(16,185,129,0.2);border-radius:8px;font-size:13px;color:var(--green)">🎉 Goal achieved!</div>`}
+    </div>`;
+  }).join('');
+
+  const newBtn = `<button class="goal-new-btn" onclick="openNewGoal()">
+    <span style="font-size:28px">＋</span>
+    <span>Create new goal</span>
+  </button>`;
+
+  el('goals-grid').innerHTML = goalCards + newBtn;
+}
+
+function openNewGoal() {
+  el('goal-modal-title').textContent = 'New Goal';
+  el('g-title').value=''; el('g-target').value=''; el('g-saved').value='';
+  el('g-deadline').value=''; el('g-edit-id').value=''; el('g-emoji-val').value='🎯';
+  document.querySelectorAll('#emoji-picker button').forEach(b => {
+    b.classList.remove('selected');
+    b.style.borderColor='var(--border)';
+    b.style.background='rgba(255,255,255,0.03)';
+  });
+  openModal('goal-modal');
+}
+
+function editGoal(id) {
+  const g = APP.goals.find(x=>x.id===id);
+  if (!g) return;
+  el('goal-modal-title').textContent = 'Edit Goal';
+  el('g-title').value   = g.title;
+  el('g-target').value  = g.target;
+  el('g-saved').value   = g.saved;
+  el('g-deadline').value= g.deadline;
+  el('g-edit-id').value = g.id;
+  el('g-emoji-val').value = g.emoji;
+  // highlight current emoji
+  document.querySelectorAll('#emoji-picker button').forEach(b => {
+    const active = b.textContent === g.emoji;
+    b.classList.toggle('selected', active);
+    b.style.borderColor = active ? 'var(--cyan)' : 'var(--border)';
+    b.style.background  = active ? 'rgba(0,212,255,0.1)' : 'rgba(255,255,255,0.03)';
+  });
+  openModal('goal-modal');
+}
+
+function saveGoal() {
+  const title  = el('g-title').value.trim();
+  const target = parseFloat(el('g-target').value);
+  if (!title)       { alert('Enter a goal name'); return; }
+  if (!target || target <= 0) { alert('Enter a valid target amount'); return; }
+
+  const editId = el('g-edit-id').value;
+  if (editId) {
+    const g = APP.goals.find(x=>x.id===parseInt(editId));
+    if (g) {
+      g.title    = title;
+      g.target   = target;
+      g.saved    = parseFloat(el('g-saved').value) || 0;
+      g.deadline = el('g-deadline').value;
+      g.emoji    = el('g-emoji-val').value || '🎯';
+    }
+  } else {
+    APP.goals.push({
+      id:       uid(),
+      title,
+      target,
+      saved:    parseFloat(el('g-saved').value) || 0,
+      deadline: el('g-deadline').value,
+      emoji:    el('g-emoji-val').value || '🎯',
+      color:    GOAL_COLORS[APP.goals.length % GOAL_COLORS.length]
+    });
+  }
+  saveState();
+  closeModal('goal-modal');
+  renderGoalStats(); renderOverallProgress(); renderGoals();
+}
+
+function openDeposit(id) {
+  depositGoalId = id;
+  const g = APP.goals.find(x=>x.id===id);
+  el('deposit-goal-name').textContent = g ? `Adding to: ${g.emoji} ${g.title}` : '';
+  el('dep-amount').value = '';
+  openModal('deposit-modal');
+}
+
+function doDeposit() {
+  const amt = parseFloat(el('dep-amount').value);
+  if (!amt || amt <= 0) { alert('Enter a valid amount'); return; }
+  const g = APP.goals.find(x=>x.id===depositGoalId);
+  if (g) {
+    g.saved = Math.min(g.target, g.saved + amt);
+    saveState();
+    closeModal('deposit-modal');
+    renderGoalStats(); renderOverallProgress(); renderGoals();
+  }
+}
+
+function deleteGoal(id) {
+  if (!confirm('Delete this goal?')) return;
+  APP.goals = APP.goals.filter(x=>x.id!==id);
+  saveState(); renderGoalStats(); renderOverallProgress(); renderGoals();
+}
+</script>
+</body>
+</html>

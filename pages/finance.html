@@ -1,0 +1,270 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MyWeb – Finance</title>
+  <link rel="stylesheet" href="../css/style.css">
+</head>
+<body>
+<div class="app">
+
+  <div class="sidebar" id="sidebar">
+    <div class="sidebar-logo">
+      <div class="logo-icon">⚡</div>
+      <div><div class="logo-text">MyWeb</div><div class="logo-sub">Personal OS</div></div>
+    </div>
+    <nav class="nav">
+      <a href="../index.html"    class="nav-link"><span class="nav-icon">🏠</span><span class="nav-label">Dashboard</span></a>
+      <a href="tasks.html"      class="nav-link"><span class="nav-icon">✅</span><span class="nav-label">Tasks</span></a>
+      <a href="finance.html"    class="nav-link active"><span class="nav-icon">💰</span><span class="nav-label">Finance</span></a>
+      <a href="calendar.html"   class="nav-link"><span class="nav-icon">📅</span><span class="nav-label">Calendar</span></a>
+      <a href="goals.html"      class="nav-link"><span class="nav-icon">🎯</span><span class="nav-label">Goals</span></a>
+    </nav>
+    <div class="sidebar-footer"><div class="status-pill"><div class="pulse-dot"></div> All systems go</div></div>
+  </div>
+  <div class="sidebar-overlay" id="sidebar-overlay"></div>
+
+  <div class="main">
+    <div class="topbar">
+      <button class="hamburger" id="hamburger">☰</button>
+      <div class="topbar-title">Finance</div>
+      <div class="topbar-clock" id="clock"></div>
+    </div>
+
+    <div class="page-content">
+      <div class="section-head">
+        <div><h1>Finance</h1><p id="finance-summary">Loading…</p></div>
+        <button class="btn btn-primary" onclick="openModal('expense-modal')">+ Log Expense</button>
+      </div>
+
+      <!-- Stats -->
+      <div class="grid-4" style="margin-bottom:22px" id="finance-stats"></div>
+
+      <!-- Charts row -->
+      <div class="grid-2" style="margin-bottom:22px">
+        <div class="card">
+          <div class="card-title">📊 Spending by category</div>
+          <div class="bar-chart" id="finance-bars"></div>
+        </div>
+        <div class="card">
+          <div class="card-title">📈 Category breakdown</div>
+          <div id="cat-breakdown"></div>
+        </div>
+      </div>
+
+      <!-- Expense list -->
+      <div class="card">
+        <div class="card-title" style="justify-content:space-between;margin-bottom:14px">
+          <span>🧾 Expense history</span>
+        </div>
+        <div class="search-bar">
+          <input type="text" id="search-input" placeholder="🔍 Search expenses…" oninput="renderExpenses()" style="max-width:240px">
+          <select id="filter-cat" onchange="renderExpenses()" style="max-width:200px;width:auto">
+            <option value="">All categories</option>
+          </select>
+          <select id="filter-period" onchange="renderExpenses()" style="max-width:160px;width:auto">
+            <option value="">All time</option>
+            <option value="week">This week</option>
+            <option value="month">This month</option>
+            <option value="year">This year</option>
+          </select>
+        </div>
+        <div id="expense-list"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL -->
+<div class="modal-overlay" id="expense-modal">
+  <div class="modal-box">
+    <div class="modal-header">
+      <h2>Log Expense</h2>
+      <button class="modal-close" onclick="closeModal('expense-modal')">×</button>
+    </div>
+    <div class="form-group">
+      <label>Amount *</label>
+      <input type="number" id="e-amount" placeholder="0.00" step="0.01" min="0">
+    </div>
+    <div class="form-group"><label>Description *</label><input id="e-desc" placeholder="What did you spend on?"></div>
+    <div class="form-row">
+      <div class="form-group">
+        <label>Category</label>
+        <select id="e-cat">
+          <option value="food">🍔 Food</option>
+          <option value="transport">🚗 Transport</option>
+          <option value="entertainment">🎬 Entertainment</option>
+          <option value="clothes">👗 Clothes</option>
+          <option value="tech">💻 Tech</option>
+          <option value="subscriptions">📱 Subscriptions</option>
+          <option value="education">📚 Education</option>
+          <option value="bills">🧾 Bills</option>
+          <option value="personal">✨ Personal</option>
+          <option value="savings">💰 Savings</option>
+          <option value="misc">📦 Other</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Date</label>
+        <input type="date" id="e-date">
+      </div>
+    </div>
+    <div class="form-group"><label>Notes</label><input id="e-notes" placeholder="Optional notes"></div>
+    <div style="display:flex;gap:10px;margin-top:6px">
+      <button class="btn btn-primary" style="flex:1" onclick="saveExpense()">Add Expense</button>
+      <button class="btn btn-ghost" onclick="closeModal('expense-modal')">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<script src="../js/app.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+  el('e-date').value = today();
+  // populate filter dropdown
+  Object.entries(CAT_EMOJI).forEach(([k,v]) => {
+    const opt = document.createElement('option');
+    opt.value = k; opt.textContent = v + ' ' + k;
+    el('filter-cat').appendChild(opt);
+  });
+  renderFinanceStats();
+  renderFinanceBars();
+  renderCatBreakdown();
+  renderExpenses();
+});
+
+function renderFinanceStats() {
+  const total     = APP.expenses.reduce((s,e)=>s+e.amount,0);
+  const n = new Date();
+  const thisMonth = APP.expenses.filter(e=>{
+    const d=new Date(e.date);
+    return d.getMonth()===n.getMonth()&&d.getFullYear()===n.getFullYear();
+  }).reduce((s,e)=>s+e.amount,0);
+  const avg = APP.expenses.length ? total/APP.expenses.length : 0;
+
+  // biggest category
+  const totals = {};
+  APP.expenses.forEach(e=>totals[e.cat]=(totals[e.cat]||0)+e.amount);
+  const topCat = Object.entries(totals).sort((a,b)=>b[1]-a[1])[0];
+
+  el('finance-summary').textContent = `${APP.expenses.length} transactions · $${total.toFixed(2)} total`;
+  el('finance-stats').innerHTML = `
+    <div class="stat-card red">
+      <div class="stat-emoji">💸</div>
+      <div class="stat-value" style="color:var(--red)">$${total.toFixed(0)}</div>
+      <div class="stat-label">All time spent</div>
+    </div>
+    <div class="stat-card orange">
+      <div class="stat-emoji">📆</div>
+      <div class="stat-value" style="color:var(--orange)">$${thisMonth.toFixed(0)}</div>
+      <div class="stat-label">This month</div>
+    </div>
+    <div class="stat-card blue">
+      <div class="stat-emoji">📊</div>
+      <div class="stat-value" style="color:var(--blue)">${APP.expenses.length}</div>
+      <div class="stat-label">Transactions</div>
+    </div>
+    <div class="stat-card cyan">
+      <div class="stat-emoji">⚡</div>
+      <div class="stat-value" style="color:var(--cyan)">$${avg.toFixed(0)}</div>
+      <div class="stat-label">Avg per item</div>
+    </div>
+  `;
+}
+
+function renderFinanceBars() {
+  const totals = {};
+  APP.expenses.forEach(e=>totals[e.cat]=(totals[e.cat]||0)+e.amount);
+  const entries = Object.entries(totals).filter(([,v])=>v>0).sort((a,b)=>b[1]-a[1]).slice(0,7);
+  if (!entries.length) {
+    el('finance-bars').innerHTML = '<div class="empty" style="padding:20px"><p>No expenses yet</p></div>';
+    return;
+  }
+  const max = Math.max(...entries.map(([,v])=>v), 1);
+  el('finance-bars').innerHTML = entries.map(([cat,amt]) => `
+    <div class="bar-col">
+      <div class="bar-value">$${amt.toFixed(0)}</div>
+      <div class="bar-rect" style="height:${Math.max(4,(amt/max*100)).toFixed(0)}px;background:${CAT_COLORS[cat]||'#888'}"></div>
+      <div class="bar-label">${CAT_EMOJI[cat]||'📦'}</div>
+    </div>
+  `).join('');
+}
+
+function renderCatBreakdown() {
+  const totals = {};
+  APP.expenses.forEach(e=>totals[e.cat]=(totals[e.cat]||0)+e.amount);
+  const entries = Object.entries(totals).sort((a,b)=>b[1]-a[1]);
+  const max = entries[0]?.[1] || 1;
+  el('cat-breakdown').innerHTML = entries.length ? entries.map(([cat,amt]) => `
+    <div style="margin-bottom:13px">
+      <div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:5px">
+        <span>${CAT_EMOJI[cat]||'📦'} <span style="text-transform:capitalize">${cat}</span></span>
+        <span style="font-family:monospace;color:${CAT_COLORS[cat]};font-weight:700">$${amt.toFixed(2)}</span>
+      </div>
+      <div class="progress-wrap"><div class="progress-fill" style="width:${(amt/max*100).toFixed(0)}%;background:${CAT_COLORS[cat]||'#888'}"></div></div>
+    </div>
+  `).join('') : '<div class="empty"><p>No data</p></div>';
+}
+
+function renderExpenses() {
+  const search = (el('search-input').value||'').toLowerCase();
+  const cat    = el('filter-cat').value;
+  const period = el('filter-period').value;
+  const now    = new Date();
+
+  let list = [...APP.expenses].filter(e => {
+    const matchSearch = !search || e.desc.toLowerCase().includes(search) || e.cat.includes(search);
+    const matchCat    = !cat || e.cat === cat;
+    let   matchPeriod = true;
+    if (period) {
+      const d = new Date(e.date);
+      if (period === 'week')  matchPeriod = (now - d) <= 7*86400000;
+      if (period === 'month') matchPeriod = d.getMonth()===now.getMonth()&&d.getFullYear()===now.getFullYear();
+      if (period === 'year')  matchPeriod = d.getFullYear()===now.getFullYear();
+    }
+    return matchSearch && matchCat && matchPeriod;
+  }).sort((a,b) => b.date.localeCompare(a.date));
+
+  el('expense-list').innerHTML = list.length ? list.map(e => `
+    <div class="list-item">
+      <div class="exp-icon" style="background:${CAT_COLORS[e.cat]||'#888'}18">${CAT_EMOJI[e.cat]||'📦'}</div>
+      <div class="item-flex">
+        <div class="item-main">${e.desc}</div>
+        <div class="item-sub">
+          <span style="color:${CAT_COLORS[e.cat]};text-transform:capitalize">${e.cat}</span>
+          · ${e.date}${e.notes?' · '+e.notes:''}
+        </div>
+      </div>
+      <div class="exp-amount">-$${parseFloat(e.amount).toFixed(2)}</div>
+      <button class="btn-icon" onclick="deleteExpense(${e.id})" title="Delete">🗑️</button>
+    </div>
+  `).join('') : '<div class="empty"><div class="empty-icon">💸</div><p>No expenses found</p></div>';
+}
+
+function saveExpense() {
+  const amount = parseFloat(el('e-amount').value);
+  const desc   = el('e-desc').value.trim();
+  if (!amount || amount <= 0) { alert('Enter a valid amount'); return; }
+  if (!desc) { alert('Enter a description'); return; }
+  APP.expenses.push({
+    id: uid(), amount, desc,
+    cat:   el('e-cat').value,
+    date:  el('e-date').value || today(),
+    notes: el('e-notes').value
+  });
+  saveState();
+  closeModal('expense-modal');
+  el('e-amount').value=''; el('e-desc').value=''; el('e-notes').value='';
+  renderFinanceStats(); renderFinanceBars(); renderCatBreakdown(); renderExpenses();
+}
+
+function deleteExpense(id) {
+  if (!confirm('Delete this expense?')) return;
+  APP.expenses = APP.expenses.filter(x=>x.id!==id);
+  saveState();
+  renderFinanceStats(); renderFinanceBars(); renderCatBreakdown(); renderExpenses();
+}
+</script>
+</body>
+</html>
